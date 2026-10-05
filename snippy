@@ -1,0 +1,11 @@
+#!/bin/sh
+dir=$(dirname "$(readlink -f "$0")")
+bin="$dir/bin/snippy"
+newest=$(find "$dir/src" "$dir/../milk/src/tx" "$dir/../milk/src/config" -name '*.odin' -newer "$bin" 2>/dev/null | head -n 1)
+if [ ! -x "$bin" ] || [ -n "$newest" ]; then
+    if ! "$dir/build.sh" >&2; then
+        [ -x "$bin" ] || { echo "snippy: build failed and no previous binary exists" >&2; exit 1; }
+        echo "snippy: build failed; starting the previous binary" >&2
+    fi
+fi
+exec "$bin" "$@"
