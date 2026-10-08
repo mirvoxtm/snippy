@@ -1,11 +1,19 @@
 #!/bin/sh
+# snippy launcher: runs the current build from the clone. When a source
+# (snippy's or milk's shared packages) is newer than bin/snippy, the previous
+# binary still starts at once and the rebuild runs in the background for the
+# next start, one at a time, logged to ~/.cache/milk/snippy-build.log. Only a
+# missing binary is built first.
 dir=$(dirname "$(readlink -f "$0")")
 bin="$dir/bin/snippy"
-newest=$(find "$dir/src" "$dir/../milk/src/tx" "$dir/../milk/src/config" -name '*.odin' -newer "$bin" 2>/dev/null | head -n 1)
-if [ ! -x "$bin" ] || [ -n "$newest" ]; then
-    if ! "$dir/build.sh" >&2; then
-        [ -x "$bin" ] || { echo "snippy: build failed and no previous binary exists" >&2; exit 1; }
-        echo "snippy: build failed; starting the previous binary" >&2
-    fi
+if [ ! -x "$bin" ]; then
+    "$dir/build.sh" >&2 || { echo "snippy: build failed and no previous binary exists" >&2; exit 1; }
+elif [ -n "$(find "$dir/src" "$dir/../milk/src/tx" "$dir/../milk/src/config" -name '*.odin' -newer "$bin" 2>/dev/null | head -n 1)" ]; then
+    log="${XDG_CACHE_HOME:-$HOME/.cache}/milk/snippy-build.log"
+    mkdir -p "${log%/*}"
+    ( (
+        if command -v flock >/dev/null 2>&1; then flock -n 9 || exit 0; fi
+        exec "$dir/build.sh" >"$log" 2>&1 </dev/null
+    ) 9>"$log.lock" & )
 fi
 exec "$bin" "$@"

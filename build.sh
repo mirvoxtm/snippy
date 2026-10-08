@@ -12,5 +12,10 @@ if [ -z "$milk_src" ]; then
 fi
 [ -n "$milk_src" ] && [ -d "$milk_src/tx" ] || { echo "snippy: milk's sources not found (clone milk next to snippy or set MILK_SRC)" >&2; exit 1; }
 mkdir -p "$dir/bin"
-odin build "$dir/src" -collection:milk="$milk_src" -out:"$dir/bin/snippy" -o:speed -vet ${SNIPPY_ODIN_FLAGS:-}
+# Built aside and renamed into place: a program started meanwhile (a build may
+# run in the background) finds either the old binary or the new one, whole.
+tmp="$dir/bin/snippy.build.$$"
+trap 'rm -f "$tmp"' EXIT
+odin build "$dir/src" -collection:milk="$milk_src" -out:"$tmp" -o:speed -vet ${SNIPPY_ODIN_FLAGS:-}
+mv -f "$tmp" "$dir/bin/snippy"
 echo "built $dir/bin/snippy"
